@@ -3,9 +3,9 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 
 mod db;
 mod handlers;
+mod models;
 mod routes;
 mod workers;
-mod models;
 
 #[tokio::main]
 async fn main() {
@@ -14,7 +14,7 @@ async fn main() {
     let port: u16 = match args.len() {
         1 => 3030,
         2 => args[1].parse().unwrap_or(3030),
-        _ => 3030
+        _ => 3030,
     };
 
     let socket = SocketAddr::new(IpAddr::V4(Ipv4Addr::new(127, 0, 0, 1)), port);
@@ -31,7 +31,5 @@ async fn main() {
     });
 
     //serve
-    warp::serve(routes)
-        .run(socket)
-        .await;
+    warp::serve(routes).run(socket).await;
 }
