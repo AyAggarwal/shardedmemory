@@ -12,21 +12,21 @@ fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = Infallible> + Clone {
 }
 
 // util
-fn json_body() -> impl Filter<Extract = (Val,), Error = warp::Rejection> + Clone {
+fn json_body() -> impl Filter<Extract = (Entry,), Error = warp::Rejection> + Clone {
     warp::body::content_length_limit(1024 * 16)
         .and(warp::body::json())
 }
 
 // aggregator for all register routes
 pub fn register_routes(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    register_list(db.clone()).or(register_write(db))
+    register_read(db.clone()).or(register_update(db))
 }
 
-// GET/registers/
-fn register_list(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("registers").and(warp::get()).and(with_db(db)).and_then(handlers::list_registers)
+// GET/registers/{addr}
+fn register_read(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("registers" / u64).and(warp::get()).and(with_db(db)).and_then(handlers::read_register)
 }
 // POST/registers with Entry {tag, value} as body
-fn register_write(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("registers").and(warp::post()).and(json_body()).and(with_db(db)).and_then(handlers::write_register)
+fn register_update(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("registers").and(warp::post()).and(json_body()).and(with_db(db)).and_then(handlers::update_register)
 }
