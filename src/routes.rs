@@ -4,7 +4,7 @@ use warp::{self, Filter};
 use crate::db::Db;
 use crate::handlers;
 use crate::models::Entry;
-use crate::models::Val;
+use crate::models::WriteRequest;
 
 // util
 fn with_db(db: Db) -> impl Filter<Extract = (Db,), Error = Infallible> + Clone {
@@ -17,16 +17,33 @@ fn json_body() -> impl Filter<Extract = (Entry,), Error = warp::Rejection> + Clo
         .and(warp::body::json())
 }
 
+// util
+fn write_body() -> impl Filter<Extract = (WriteRequest,), Error = warp::Rejection> + Clone {
+    warp::body::content_length_limit(1024 * 16)
+        .and(warp::body::json())
+}
+
 // aggregator for all register routes
-pub fn register_routes(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    register_read(db.clone()).or(register_update(db))
+pub fn address_routes(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    address_read(db.clone()).or(address_update(db.clone())).or(read(db.clone())).or(write(db))
 }
 
 // GET/registers/{addr}
-fn register_read(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path!("registers" / u64).and(warp::get()).and(with_db(db)).and_then(handlers::read_register)
+fn address_read(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("registers" / u64).and(warp::get()).and(with_db(db)).and_then(handlers::read_address)
 }
+
+// GET/read/{addr}
+fn read(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path!("read" / u64).and(warp::get()).and(with_db(db)).and_then(handlers::read)
+}
+
 // POST/registers with Entry {tag, value} as body
-fn register_update(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
-    warp::path("registers").and(warp::post()).and(json_body()).and(with_db(db)).and_then(handlers::update_register)
+fn address_update(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("registers").and(warp::post()).and(json_body()).and(with_db(db)).and_then(handlers::update_address)
+}
+
+// POST/write with Entry {tag, value} as body
+fn write(db: Db) -> impl Filter<Extract = impl warp::Reply, Error = warp::Rejection> + Clone {
+    warp::path("write").and(warp::post()).and(write_body()).and(with_db(db)).and_then(handlers::write)
 }
