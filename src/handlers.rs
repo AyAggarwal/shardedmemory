@@ -27,7 +27,7 @@ pub async fn read_address(addr: u64, db: Db) -> Result<impl warp::Reply, Infalli
     Ok(StatusCode::OK)
  }
 
- pub async fn read(addr: u64, db: Db) -> Result<impl warp::Reply, Infallible> {
+ pub async fn read(addr: u64, db: Db, port: u16) -> Result<impl warp::Reply, Infallible> {
     //check if I have something with read_address and proceed with 0
     let entries = db.lock().await;
     let value = entries.get(&addr);
@@ -40,8 +40,10 @@ pub async fn read_address(addr: u64, db: Db) -> Result<impl warp::Reply, Infalli
 
     //init request client and begin asking for 
     let client = reqwest::Client::new();
-    for port in NODES {
-        let uri = format!("{}{}{}{}","http://127.0.0.1:",port,"/registers/",addr);
+    let other_nodes = NODES.iter().filter(|id| **id!=port);
+    for p in other_nodes {
+        
+        let uri = format!("{}{}{}{}","http://127.0.0.1:",*p,"/registers/",addr);
         println!("{}", uri);
         let resp = client.get(uri).send().await;
         //we do not care if it returns an error since it will be fail detected
@@ -69,7 +71,7 @@ pub async fn read_address(addr: u64, db: Db) -> Result<impl warp::Reply, Infalli
     }
 }
 
-pub async fn write(data: WriteRequest, db: Db) -> Result<impl warp::Reply, Infallible> {
+pub async fn write(data: WriteRequest, db: Db, port: u16) -> Result<impl warp::Reply, Infallible> {
     //check whatever tag that I have
     let mut entries = db.lock().await;
     let value = entries.get(&data.addr);
@@ -80,8 +82,13 @@ pub async fn write(data: WriteRequest, db: Db) -> Result<impl warp::Reply, Infal
 
     //init request client and begin asking for tags 
     let client = reqwest::Client::new();
-    for port in NODES {
-        let uri = format!("{}{}{}{}","http://127.0.0.1:",port,"/registers/",data.addr);
+
+    let other_nodes = NODES.iter().filter(|&&id| id != port).collect::<Vec<&u16>>();
+    println!("{:?}, this is the port {}",other_nodes, port);
+
+
+    for p in &other_nodes {
+        let uri = format!("{}{}{}{}","http://127.0.0.1:",**p,"/registers/",data.addr);
         println!("{}", uri);
         let resp = client.get(uri).send().await;
         //we do not care if it returns an error since it will be fail detected
@@ -108,8 +115,8 @@ pub async fn write(data: WriteRequest, db: Db) -> Result<impl warp::Reply, Infal
     let new_entry = Entry {addr: data.addr, value: Val {tag: current_tag, value: data.value.clone()} };
     entries.insert(data.addr, Val {tag: current_tag, value: data.value.clone()});
 
-    for port in NODES {
-        let uri = format!("{}{}{}","http://127.0.0.1:",port,"/registers/");
+    for p in other_nodes {
+        let uri = format!("{}{}{}","http://127.0.0.1:",*p,"/registers/");
         println!("{}", uri);
         let resp = client.post(uri).json(&new_entry).send().await;
         //we do not care if it returns an error since it will be fail detected

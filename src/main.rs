@@ -20,7 +20,7 @@ async fn main() {
 
     //init db and server combo
     let state = db::blank();
-    let routes = routes::address_routes(state);
+    let routes = routes::address_routes(state, port);
 
     //serve
     warp::serve(routes)
