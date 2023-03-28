@@ -1,10 +1,11 @@
 use std::convert::Infallible;
+use std::ops::Deref;
 use warp::{self, http::StatusCode};
 use reqwest;
+use crate::db::Peers;
 use crate::models::Entry;
 use crate::models::Val;
 use crate::models::WriteRequest;
-use crate::models::NODES;
 use crate::db::Db;
 
 // reads local value at an address 
@@ -27,7 +28,12 @@ pub async fn read_address(addr: u64, db: Db) -> Result<impl warp::Reply, Infalli
     Ok(StatusCode::OK)
  }
 
- pub async fn read(addr: u64, db: Db, port: u16) -> Result<impl warp::Reply, Infallible> {
+// status checker
+ pub async fn pong() -> Result<impl warp::Reply, Infallible> {
+    Ok(StatusCode::OK)
+ }
+
+ pub async fn read(addr: u64, db: Db, peers: Peers) -> Result<impl warp::Reply, Infallible> {
     //check if I have something with read_address and proceed with 0
     let entries = db.lock().await;
     let value = entries.get(&addr);
@@ -40,8 +46,9 @@ pub async fn read_address(addr: u64, db: Db) -> Result<impl warp::Reply, Infalli
 
     //init request client and begin asking for 
     let client = reqwest::Client::new();
-    let other_nodes = NODES.iter().filter(|id| **id!=port);
-    for p in other_nodes {
+    let peer_ports = peers.lock().await;
+    let peers = peer_ports.deref();
+    for p in peers {
         
         let uri = format!("{}{}{}{}","http://127.0.0.1:",*p,"/registers/",addr);
         println!("{}", uri);
@@ -71,7 +78,7 @@ pub async fn read_address(addr: u64, db: Db) -> Result<impl warp::Reply, Infalli
     }
 }
 
-pub async fn write(data: WriteRequest, db: Db, port: u16) -> Result<impl warp::Reply, Infallible> {
+pub async fn write(data: WriteRequest, db: Db, peers: Peers) -> Result<impl warp::Reply, Infallible> {
     //check whatever tag that I have
     let mut entries = db.lock().await;
     let value = entries.get(&data.addr);
@@ -83,12 +90,11 @@ pub async fn write(data: WriteRequest, db: Db, port: u16) -> Result<impl warp::R
     //init request client and begin asking for tags 
     let client = reqwest::Client::new();
 
-    let other_nodes = NODES.iter().filter(|&&id| id != port).collect::<Vec<&u16>>();
-    println!("{:?}, this is the port {}",other_nodes, port);
+    let peer_ports = peers.lock().await;
+    let peers = peer_ports.deref();
 
-
-    for p in &other_nodes {
-        let uri = format!("{}{}{}{}","http://127.0.0.1:",**p,"/registers/",data.addr);
+    for p in peers {
+        let uri = format!("{}{}{}{}","http://127.0.0.1:",*p,"/registers/",data.addr);
         println!("{}", uri);
         let resp = client.get(uri).send().await;
         //we do not care if it returns an error since it will be fail detected
@@ -115,7 +121,7 @@ pub async fn write(data: WriteRequest, db: Db, port: u16) -> Result<impl warp::R
     let new_entry = Entry {addr: data.addr, value: Val {tag: current_tag, value: data.value.clone()} };
     entries.insert(data.addr, Val {tag: current_tag, value: data.value.clone()});
 
-    for p in other_nodes {
+    for p in peers {
         let uri = format!("{}{}{}","http://127.0.0.1:",*p,"/registers/");
         println!("{}", uri);
         let resp = client.post(uri).json(&new_entry).send().await;

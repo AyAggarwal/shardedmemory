@@ -4,6 +4,7 @@ use std::net::{IpAddr, Ipv4Addr, SocketAddr};
 mod db;
 mod handlers;
 mod routes;
+mod workers;
 mod models;
 
 #[tokio::main]
@@ -20,7 +21,14 @@ async fn main() {
 
     //init db and server combo
     let state = db::blank();
-    let routes = routes::address_routes(state, port);
+
+    let peers = db::setup_peers(port);
+    let routes = routes::address_routes(state, peers.clone());
+
+    //start fail detector
+    tokio::task::spawn(async move {
+        workers::main_worker(peers).await;
+    });
 
     //serve
     warp::serve(routes)
