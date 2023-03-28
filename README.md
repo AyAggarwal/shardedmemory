@@ -16,7 +16,7 @@ The round is identical as the first round of a write operation. It discovers the
 replies received in the first round and returns to the client. At this point, no person reading the network would receive a value that preceedes this one, because at least one server has the most recent value and any subsequent reads will see it. 
 
 ## Fail Detection
-The protocol uses a simple fail detection system rather than relying on a majority quourum. A separate thread in each node will ping all other nodes every 2 seconds for a pong() ACK. If this results in an error, then the server will remove the errored address from it's peer list. This should be imporved by using a timeout to avoid waitting if a server freezes. 
+The protocol uses a simple fail detection system rather than relying on a majority quourum. A separate thread in each node will ping all other nodes every 2 seconds for a pong() ACK. If this results in an error, then the server will remove the errored address from it's peer list. 
 
 ## design
 This project is built on the following open-source libraries:
@@ -36,6 +36,6 @@ These are the files in src:
 each node stores a HashMap of address (int) to Val (struct containing a tag and a string). These make up an Entry in the node's local database. Thus an Entry is the umbrella struct used to communicate information between nodes. it contains everything needed to maintain this distriburted system. read_register() and update_register() functions are internal functions which assist the protocol in state replication. read() and write() are the main external facing fucntions which satisfy the user API. 
 
 ## Improvements
-- Expand coverage of proper error handling on web related errors. 
-- Re-use a single client instance in server to server http requests.
-- Replace Reqwest and Warp for Hyper so the server can seamlessly have a client integrated into it's handlers. Currently the use of a higher-level client library is causing irregular patters in the handler module. 
+- Adding a timeout to fail detection system to avoid waitting if a server freezes. Currently an Error is sufficient to detect crashes, but a frozen api call which is more likely would halt the detection system breaking everything. 
+- Re-use a single client instance in server to server http requests to increase speed.
+- Replace Reqwest and Warp for Hyper so the server can seamlessly have a client integrated into it's handlers. Currently the use of a higher-level client library is causing irregular patters in the handler module. This would also help readability and performance. 
