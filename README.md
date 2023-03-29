@@ -50,7 +50,7 @@ run the above commands (in quick succession so that the fail detection system do
 - POST localhost:{port}/write with body {addr: int, value: string}
 
 and the system will do the rest for you! If you want a postman collection here is mine: 
-https://api.postman.com/collections/26594267-00b965b2-ea19-45ec-9bed-c1fc7a128e84?
+https://www.postman.com/flight-astronaut-23500983/workspace/sharedmemory/collection/26594267-00b965b2-ea19-45ec-9bed-c1fc7a128e84?action=share&creator=26594267
 
 the database is sharded, so if you want to play with that you can use the following addresses which I have tested will result in these clusters:
 
