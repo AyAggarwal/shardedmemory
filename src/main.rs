@@ -22,8 +22,13 @@ async fn main() {
     //init db and server combo
     let state = db::blank();
 
-    let peers = db::setup_peers(port);
-    let routes = routes::address_routes(state, peers.clone());
+    // setup peer tracking
+    let peers = db::setup_peers(port.clone());
+    let me = db::setup_me(port);
+
+    // initialize hashing function
+    let sharder = db::setup_sharding();
+    let routes = routes::address_routes(me, state, peers.clone(), sharder);
 
     //start fail detector
     tokio::task::spawn(async move {

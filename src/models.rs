@@ -28,3 +28,9 @@ impl Default for Val {
         }
     }
 }
+
+#[derive(Debug, Deserialize, Serialize, Clone, Hash)]
+pub struct VNode {
+    pub port1: u16,
+    pub port2: u16,
+}

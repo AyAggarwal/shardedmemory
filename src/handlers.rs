@@ -1,4 +1,6 @@
 use crate::db::Db;
+use crate::db::HashFunction;
+use crate::db::Me;
 use crate::db::Peers;
 use crate::models::Entry;
 use crate::models::Val;
@@ -87,8 +89,10 @@ pub async fn read(addr: u64, db: Db, peers: Peers) -> Result<impl warp::Reply, I
 
 pub async fn write(
     data: WriteRequest,
+    me: Me,
     db: Db,
     peers: Peers,
+    sharder: HashFunction,
 ) -> Result<impl warp::Reply, Infallible> {
     //check whatever tag that I have
     let mut entries = db.lock().await;
@@ -97,13 +101,12 @@ pub async fn write(
     if let Some(x) = value {
         current_tag = x.tag;
     }
-
     //init request client and begin asking for tags
     let client = reqwest::Client::new();
-
     let peer_ports = peers.lock().await;
     let peers = peer_ports.deref();
 
+    println!("peers {:?}", peers);
     for p in peers {
         let uri = format!(
             "{}{}{}{}",
@@ -131,7 +134,7 @@ pub async fn write(
 
     // increment the current tag so we can send write requests to all the nodes
     current_tag += 1;
-    //store in our db
+
     let new_entry = Entry {
         addr: data.addr,
         value: Val {
@@ -139,25 +142,36 @@ pub async fn write(
             value: data.value.clone(),
         },
     };
-    entries.insert(
-        data.addr,
-        Val {
-            tag: current_tag,
-            value: data.value.clone(),
-        },
-    );
 
-    for p in peers {
-        let uri = format!("{}{}{}", "http://127.0.0.1:", *p, "/registers/");
-        println!("{}", uri);
-        let resp = client.post(uri).json(&new_entry).send().await;
-        //we do not care if it returns an error since it will be fail detected
-        match resp {
-            Ok(response) => {
-                println!("reached here! {:?}", response);
-            }
-            Err(e) => {
-                println!("{}", e);
+    let hash = sharder.lock().await;
+    let vnode = hash.get(&data.addr).unwrap();
+    let cluster = [vnode.port1, vnode.port2];
+
+    let myport = me.lock().await;
+    println!("virtual shard {:?}", cluster);
+    for p in cluster {
+        if p == *myport {
+            entries.insert(
+                data.addr,
+                Val {
+                    tag: current_tag,
+                    value: data.value.clone(),
+                },
+            );
+        } else if !peers.contains(&p) {
+            continue;
+        } else {
+            let uri = format!("{}{}{}", "http://127.0.0.1:", p, "/registers/");
+            println!("{}", uri);
+            let resp = client.post(uri).json(&new_entry).send().await;
+            //we do not care if it returns an error since it will be fail detected
+            match resp {
+                Ok(response) => {
+                    println!("reached here! {:?}", response);
+                }
+                Err(e) => {
+                    println!("{}", e);
+                }
             }
         }
     }
