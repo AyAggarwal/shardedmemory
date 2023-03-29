@@ -84,14 +84,16 @@ Given the known addresses of the task, we must design a scheduler intended to in
 
 Thus, the proposed algorithm is built upon the hashring already present in the node, since the hashring satisfies the properties of being lightweight, flexible, and scalable. 
 
+start naive_scheudle:
 - job sent to node with a set address space
 - for each address
     - vcluster = hashring.get(address)
     - hashmap iterate through vcluster
     - best_node = argmax(hashmap)
 - send job to best_node
+end:
 
-This algorithm grows in time based on the job size and number of nodes in a virtual cluster. in a huge system, the number of nodes in a cluster can grow very fast. 
+This algorithm grows in time based on the job size and number of nodes in a virtual cluster. in a huge system, the number of nodes in a cluster can grow very fast, meaning this would not be optimal.
 
-"threads are assigned to the processor which is close to the data accessed by the thread. This policy aims to reduce processor waiting time due to cache misses. Fairness among threads of the same application is not necessary,"
+Scholarly approaches to this aim to reduce the number of cache misses via simply referencing the processor or more complexly presenting a pre-calculated Markov Model as a table lookup based on the previous number of cache misses. For our vitual abstracted setting, we know the task ahead of time and the address space. We could keep track of how many misses occured for a certain task with it's address in a table since the task will take the same amount of address space as arguments everytime. We can even pre-calculate this on small systems. 
 
