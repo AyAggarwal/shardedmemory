@@ -5,15 +5,9 @@ environment.
 ## Protocol
 Write: The write operation performs two communication rounds. 
 
-In the first round the writer sends query messages to all the servers which are alive (determined by the fail detection system). 
+In the first round the writer sends query messages to all the servers which are alive (determined by the fail detection system). During the second round the writer performs the following three steps:(i) it discovers the pair with the maximum tag among the replies received in the first round, (ii) it generates a new tag by incrementing the tag inside the maximum discovered tag, and (iii) it propagates the new tag along with the value to be written to the active set of servers.
 
-During the second round the writer performs the following three steps:(i) it discovers the pair with the maximum tag among
-the replies received in the first round, (ii) it generates a new tag by incrementing the tag inside
-the maximum discovered tag, and (iii) it propagates the new tag along with the value to be written to the active set of servers.
-
-Read: Unlike the original Attiya protocol, the use of a fail safe allows for the read to only use one round.
-
-It discovers the pair with the maximum tag among the replies received in the first round and returns to the client. At this point, no person reading the network would receive a value that preceedes this one, because at least one server has the most recent value and any subsequent reads will see it. 
+Read: Unlike the original Attiya protocol, the use of a fail safe allows for the read to only use one round. It discovers the pair with the maximum tag among the replies received in the first round and returns to the client. At this point, no person reading the network would receive a value that preceedes this one, because at least one server has the most recent value and any subsequent reads will see it. 
 
 ## Fail Detection
 The protocol uses a simple fail detection system rather than relying on a majority quourum. A separate thread in each node will ping all other nodes every 4 seconds for a pong() ACK. If this results in an error, then the server will remove the error address from it's peer list. 
@@ -21,7 +15,7 @@ The protocol uses a simple fail detection system rather than relying on a majori
 In order to satisfy concurrency requiremnets, the peer list is only accessed once every 4 seconds. 
 
 ## Sharding
-This system has three nodes for testing purposes, so I did not include the parameter f. I set it implicitly to f = 2/3. because 1 would not have redundancy and 3 would not demonstrate sharding. the db.rs file contains a HashFunction type which wraps the hashring external crate. the HashFunction is hardcoded to have three virtual clusters of nodes with two nodes each. This could be extended to be dynamic based on parameters. The HashFunction supports adding and removing nodes.
+This system has three nodes for testing purposes, meaning the number of nodes in a shard is implicitly set to f = 2/3. The db.rs file contains a HashFunction type which wraps the hashring external crate. the HashFunction is hardcoded to have three virtual clusters of nodes with two nodes each. This could be extended to be dynamic based on parameters, since the HashFunction supports adding and removing nodes.
 
 
 ## Design
